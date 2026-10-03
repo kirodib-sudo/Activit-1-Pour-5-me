@@ -1,0 +1,1835 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Le roi de l'arrondissement - Collège Saint-Marc</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Firebase App & Firestore SDKs -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // إعدادات مشروع Firebase: ActivitySyncPrime
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0TmFki3wb0qNXdASU3T4ggBqDxw5RtBk",
+      authDomain: "activite-5-prim.firebaseapp.com",
+      projectId: "activite-5-prim",
+      storageBucket: "activite-5-prim.firebasestorage.app",
+      messagingSenderId: "406260781091",
+      appId: "1:406260781091:web:3d1d4953a601585e0a6196",
+      measurementId: "G-7JR2JE1V0X"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ربط الدوال بنافذة المتصفح العامة
+    window.db = db;
+    window.collection = collection;
+    window.addDoc = addDoc;
+    window.query = query;
+    window.orderBy = orderBy;
+    window.limit = limit;
+    window.onSnapshot = onSnapshot;
+    window.serverTimestamp = serverTimestamp;
+    window.getDocs = getDocs;
+    window.deleteDoc = deleteDoc;
+    window.doc = doc;
+    
+    window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+}
+
+/* =========================
+   سقوط الملك التدريجي والملحوظ
+========================= */
+
+@keyframes kingFall {
+    0% {
+        transform: translate(-50%, 0) rotate(0deg);
+    }
+    100% {
+        transform: translate(-50%, var(--fall-distance)) rotate(0deg);
+    }
+}
+
+/* حركة ذراعي الملك أثناء الخوف */
+
+@keyframes leftArmFear {
+    from {
+        transform: rotate(55deg);
+    }
+
+    to {
+        transform: rotate(-65deg);
+    }
+}
+
+@keyframes rightArmFear {
+    from {
+        transform: rotate(-55deg);
+    }
+
+    to {
+        transform: rotate(65deg);
+    }
+}
+
+@keyframes kingFear {
+    from {
+        rotate: -4deg;
+    }
+
+    to {
+        rotate: 4deg;
+    }
+}
+
+.king-falling {
+    animation: kingFall linear forwards;
+}
+
+.king-falling .arm-left {
+    animation: leftArmFear .25s infinite alternate ease-in-out;
+}
+
+.king-falling .arm-right {
+    animation: rightArmFear .25s infinite alternate ease-in-out;
+}
+
+.king-falling .face {
+    animation: kingFear .3s infinite alternate;
+}
+
+/* =========================
+   حركة الطائر والصخرة الأولية
+========================= */
+
+@keyframes birdFly {
+    0% {
+        left: -120px;
+        top: 85px;
+        transform: scaleX(1);
+    }
+    50% {
+        left: calc(50% - 40px);
+        top: 95px;
+        transform: scaleX(1);
+    }
+    100% {
+        left: 110%;
+        top: 85px;
+        transform: scaleX(1);
+    }
+}
+
+@keyframes initialRockFall {
+    0% {
+        transform: translate(-50%, 0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, 250px) rotate(35deg);
+        opacity: 0;
+    }
+}
+
+.bird-anim {
+    position: absolute;
+    font-size: 32px;
+    z-index: 45;
+    pointer-events: none;
+    animation: birdFly 0.65s linear forwards;
+}
+
+.initial-rock-fall {
+    animation: initialRockFall 0.4s ease-in forwards;
+}
+
+/* =========================
+   سقوط الصخرة الخاطئة
+========================= */
+
+@keyframes rockFall {
+    0% {
+        transform: translateY(0) rotate(0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(500px) rotate(25deg);
+        opacity: .15;
+    }
+}
+
+.rock-falling {
+    animation: rockFall 1.4s ease-in forwards;
+}
+
+/* =========================
+   شخصية الملك
+========================= */
+
+.king {
+    position: absolute;
+    width: 80px;
+    height: 125px;
+    left: 50%;
+    top: 55px;
+    transform: translateX(-50%);
+    z-index: 40;
+    pointer-events: none;
+    filter: drop-shadow(0 7px 8px rgba(0,0,0,.65));
+}
+
+.crown {
+    position: absolute;
+    left: 21px;
+    top: 0;
+    font-size: 34px;
+    z-index: 5;
+}
+
+.face {
+    position: absolute;
+    left: 24px;
+    top: 29px;
+    width: 32px;
+    height: 32px;
+    background: #ffd6a5;
+    border: 2px solid #713f12;
+    border-radius: 50%;
+}
+
+.eye {
+    position: absolute;
+    top: 9px;
+    width: 5px;
+    height: 6px;
+    background: #111827;
+    border-radius: 50%;
+}
+
+.eye-left {
+    left: 7px;
+}
+
+.eye-right {
+    right: 7px;
+}
+
+.mouth {
+    position: absolute;
+    left: 10px;
+    top: 19px;
+    width: 10px;
+    height: 8px;
+    border: 2px solid #7f1d1d;
+    border-radius: 50%;
+}
+
+.body-king {
+    position: absolute;
+    left: 13px;
+    top: 58px;
+    width: 54px;
+    height: 49px;
+    background: linear-gradient(#8b5cf6,#5b21b6);
+    border: 3px solid #facc15;
+    border-radius: 16px 16px 9px 9px;
+}
+
+.belt {
+    position: absolute;
+    left: 3px;
+    top: 25px;
+    width: 42px;
+    height: 6px;
+    background: #facc15;
+}
+
+.belt-jewel {
+    position: absolute;
+    left: 18px;
+    top: -2px;
+    width: 8px;
+    height: 10px;
+    background: #ef4444;
+    border-radius: 2px;
+}
+
+.arm {
+    position: absolute;
+    top: 60px;
+    width: 14px;
+    height: 45px;
+    background: #ffd6a5;
+    border: 2px solid #713f12;
+    border-radius: 10px;
+    transform-origin: top center;
+}
+
+.arm-left {
+    left: 4px;
+    transform: rotate(55deg);
+}
+
+.arm-right {
+    right: 4px;
+    transform: rotate(-55deg);
+}
+
+.leg {
+    position: absolute;
+    top: 101px;
+    width: 15px;
+    height: 25px;
+    background: #1f2937;
+    border-radius: 8px;
+}
+
+.leg-left {
+    left: 21px;
+}
+
+.leg-right {
+    right: 21px;
+}
+
+/* =========================
+   الصخور
+========================= */
+
+.rock {
+    position: relative;
+    width: 100px;
+    min-height: 60px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #a8a29e,
+            #57534e 55%,
+            #292524
+        );
+
+    border: 3px solid #78716c;
+    border-radius: 45% 55% 42% 50%;
+
+    box-shadow:
+        inset -8px -9px 0 rgba(0,0,0,.25),
+        0 5px 0 #171717,
+        0 8px 12px rgba(0,0,0,.6);
+
+    color: white;
+    font-weight: 900;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    cursor: pointer;
+
+    transition:
+        transform .15s,
+        border-color .15s;
+}
+
+.rock:hover {
+    transform: scale(1.06);
+    border-color: #facc15;
+}
+
+.rock.correct {
+    border-color: #22c55e;
+    box-shadow:
+        0 0 20px #22c55e,
+        inset -8px -9px 0 rgba(0,0,0,.25);
+}
+
+/* =========================
+   الصخور على الجانبين
+========================= */
+
+.rocks-side {
+    position: absolute;
+    top: 110px;
+    bottom: 20px;
+    width: 27%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    gap: 6px;
+    z-index: 25;
+}
+
+.rocks-left {
+    left: 6px;
+    align-items: flex-start;
+}
+
+.rocks-right {
+    right: 6px;
+    align-items: flex-end;
+}
+
+/* =========================
+   السوط السحري
+========================= */
+
+#magic-whip {
+    position: absolute;
+    height: 6px;
+    background:
+        linear-gradient(
+            90deg,
+            #fff7a8,
+            #facc15,
+            #f59e0b
+        );
+    border-radius: 10px;
+    transform-origin: 0 50%;
+    display: none;
+    z-index: 35;
+    box-shadow: 0 0 8px #facc15;
+    pointer-events: none;
+}
+
+/* =========================
+   الأرض
+========================= */
+
+.ground-line {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #475569;
+    font-size: 10px;
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media(max-width:600px) {
+    .rock {
+        width: 78px;
+        min-height: 52px;
+        font-size: 10px;
+    }
+    .rocks-side {
+        width: 29%;
+    }
+    .king {
+        transform: translateX(-50%) scale(.9);
+        transform-origin: top center;
+    }
+}
+</style>
+</head>
+
+<body class="h-full bg-slate-950 text-white flex flex-col items-center justify-center p-2 sm:p-4 overflow-x-hidden select-none">
+
+<div
+    id="app"
+    class="w-full max-w-5xl bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 flex flex-col h-[94vh] sm:h-[90vh] overflow-hidden"
+>
+
+<!-- =========================
+     HEADER
+========================= -->
+
+<header class="bg-slate-950 px-6 py-3 border-b border-slate-800 flex justify-between items-center shrink-0">
+
+    <div>
+        <h1 class="text-base sm:text-lg font-black text-amber-400">
+            👑 Collège Saint-Marc
+        </h1>
+
+        <p class="text-[11px] text-slate-400">
+            Le roi de l'arrondissement (5ème)
+        </p>
+    </div>
+
+    <div class="flex items-center gap-3">
+
+        <div
+            id="header-user-info"
+            class="hidden items-center gap-2 text-xs bg-slate-900 px-3 py-1 rounded border border-slate-700"
+        >
+            <span
+                id="display-name"
+                class="font-bold text-indigo-300"
+            ></span>
+
+            <span
+                id="display-class"
+                class="bg-indigo-600 px-1.5 py-0.5 rounded"
+            ></span>
+        </div>
+
+        <button
+            onclick="openSettings()"
+            class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded border border-slate-700 text-xs"
+        >
+            ⚙️ Paramètres
+        </button>
+
+    </div>
+
+</header>
+
+
+<main class="flex-1 overflow-y-auto p-4 flex flex-col justify-center items-center relative">
+
+
+<!-- =========================
+     SETUP
+========================= -->
+
+<div
+    id="screen-setup"
+    class="w-full max-w-4xl bg-slate-900 p-6 rounded-2xl border border-slate-700 shadow-xl grid grid-cols-1 md:grid-cols-2 gap-6 items-start"
+>
+
+    <div class="space-y-4">
+        <div class="text-center md:text-left">
+            <h2 class="text-2xl font-bold text-amber-400">
+                Prépare ton ascension !
+            </h2>
+            <p class="text-xs text-slate-300">
+                Entre ton nom et choisis ta classe pour sauver le roi.
+            </p>
+        </div>
+
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">
+                    Nom de l'élève
+                </label>
+                <input
+                    type="text"
+                    id="input-name"
+                    placeholder="Ex: Thomas"
+                    class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                >
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">
+                    Classe
+                </label>
+                <select
+                    id="select-class"
+                    class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                >
+                    <option value="5A">5ème A</option>
+                    <option value="5B">5ème B</option>
+                    <option value="5C">5ème C</option>
+                    <option value="5D">5ème D</option>
+                    <option value="5E">5ème E</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">
+                    Niveau de difficulté
+                </label>
+                <select
+                    id="select-level"
+                    onchange="initRealtimeLeaderboard()"
+                    class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                >
+                    <option value="facile">Facile (5 Vies - 30s)</option>
+                    <option value="intermediat">Intermédiaire (4 Vies - 22s)</option>
+                    <option value="difficile">Difficile (3 Vies - 15s)</option>
+                </select>
+            </div>
+
+            <button
+                onclick="goToStory()"
+                class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl shadow-lg"
+            >
+                Commencer l'aventure 🚀
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col h-full">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-amber-400">
+                🏆 Top 10 - Meilleurs Joueurs (Cloud)
+            </h3>
+            <span id="setup-level-badge" class="text-[10px] bg-indigo-600 px-2 py-0.5 rounded uppercase">Facile</span>
+        </div>
+        <div id="setup-leaderboard-list" class="divide-y divide-slate-800 max-h-72 overflow-y-auto text-xs space-y-1">
+            <p class="text-slate-400 text-center py-4">Chargement depuis Firebase...</p>
+        </div>
+    </div>
+
+</div>
+
+
+<!-- =========================
+     STORY
+========================= -->
+
+<div
+    id="screen-story"
+    class="hidden w-full max-w-2xl space-y-4"
+>
+
+<div
+    class="bg-slate-900 p-5 rounded-2xl border border-slate-700 shadow-xl space-y-3"
+>
+
+<h2 class="text-base font-bold text-amber-400">
+📜 L'Histoire du Roi de l'Arrondissement
+</h2>
+
+<p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+
+Le Roi tombe au milieu d'un gouffre.
+Il agite ses bras de terreur pendant sa chute.
+Avec son fouet magique, il tente d'attraper un rocher.
+
+Si la réponse mathématique est correcte,
+le rocher sauve le Roi et rapporte
+<b class="text-emerald-400">10 points</b>.
+
+Si la réponse est fausse,
+le Roi arrive sur le rocher mais celui-ci s'effondre avec lui.
+Une explication mathématique apparaît ensuite.
+
+</p>
+
+<div class="flex justify-end">
+
+<button
+    onclick="startGamePlay()"
+    class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2 rounded-xl"
+>
+    C'est parti ! 🎯
+</button>
+
+</div>
+
+</div>
+
+
+<div
+    class="bg-slate-900 p-5 rounded-2xl border border-slate-700 shadow-xl"
+>
+
+<div class="flex justify-between items-center">
+
+<h3 class="text-xs sm:text-sm font-bold text-amber-400">
+🏆 Classement
+</h3>
+
+<span
+    id="lb-level-badge"
+    class="text-[10px] bg-indigo-600 px-2 py-0.5 rounded"
+>
+Niveau
+</span>
+
+</div>
+
+<div
+    id="leaderboard-list"
+    class="divide-y divide-slate-800 max-h-36 overflow-y-auto mt-2"
+>
+Chargement...
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =========================
+     GAME
+========================= -->
+
+<div
+    id="screen-game"
+    class="hidden w-full max-w-3xl flex flex-col h-full space-y-2"
+>
+
+<div
+    class="flex justify-between items-center bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 text-xs shrink-0"
+>
+
+<div>
+Tour
+<span
+    id="current-round"
+    class="text-amber-400 font-bold"
+>
+1
+</span>
+/30
+</div>
+
+<div>
+Score:
+<span
+    id="current-score"
+    class="text-emerald-400 font-bold"
+>
+0
+</span>
+</div>
+
+<div
+    id="lives-container"
+    class="flex gap-1"
+></div>
+
+<div>
+⏳
+<span
+    id="turn-timer"
+    class="text-indigo-400 font-bold"
+>
+30.0
+</span>s
+</div>
+
+</div>
+
+
+<!-- ARENA -->
+
+<div
+    id="arena"
+    class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl relative overflow-y-auto overflow-x-hidden min-h-[500px]"
+>
+
+<!-- خط المنتصف -->
+
+<div
+    class="absolute left-1/2 top-0 bottom-0 w-px bg-white/5"
+></div>
+
+
+<!-- السؤال -->
+
+<div
+    class="absolute top-3 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-lg"
+>
+
+<div
+    class="bg-indigo-950/95 border border-indigo-700 px-4 py-2 rounded-xl text-center shadow"
+>
+
+<p
+    id="rounding-question"
+    class="text-xs sm:text-sm font-bold"
+>
+Arrondir
+</p>
+
+<p class="text-xs font-mono text-amber-300 mt-1">
+
+Nombre :
+
+<span
+    id="target-number"
+    class="font-black text-sm sm:text-base"
+>
+12.3458
+</span>
+
+</p>
+
+</div>
+
+</div>
+
+
+<!-- الصخور اليسرى -->
+
+<div
+    id="rocks-left-container"
+    class="rocks-side rocks-left"
+></div>
+
+
+<!-- الصخور اليمنى -->
+
+<div
+    id="rocks-right-container"
+    class="rocks-side rocks-right"
+></div>
+
+
+<!-- السوط -->
+
+<div id="magic-whip"></div>
+
+
+<!-- صخرة بداية الدور العليا -->
+<div id="top-rock" class="absolute left-1/2 -translate-x-1/2 top-16 w-24 h-12 bg-gradient-to-br from-stone-400 to-stone-600 border-2 border-stone-700 rounded-full z-30 shadow-lg flex items-center justify-center text-xs font-bold text-amber-300">
+    🪨 Sommet
+</div>
+
+<!-- حاوية الطائر المتحرك -->
+<div id="bird-container"></div>
+
+
+<!-- الملك -->
+
+<div
+    id="king"
+    class="king"
+>
+
+<div class="crown">
+👑
+</div>
+
+<div class="face">
+
+<span class="eye eye-left"></span>
+<span class="eye eye-right"></span>
+
+<span class="mouth"></span>
+
+</div>
+
+<div class="body-king">
+
+<div class="belt">
+
+<div class="belt-jewel"></div>
+
+</div>
+
+</div>
+
+<div class="arm arm-left"></div>
+<div class="arm arm-right"></div>
+
+<div class="leg leg-left"></div>
+<div class="leg leg-right"></div>
+
+</div>
+
+
+<div class="ground-line">
+⚠️ SOL
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =========================
+     RESULT
+========================= -->
+
+<div
+    id="screen-result"
+    class="hidden w-full max-w-md bg-slate-900 p-6 rounded-2xl border border-slate-700 shadow-xl text-center space-y-4"
+>
+
+<div
+    id="result-icon"
+    class="text-4xl"
+>
+🏆
+</div>
+
+<h2
+    id="result-title"
+    class="text-xl font-bold text-amber-400"
+>
+Victoire !
+</h2>
+
+<p
+    id="result-message"
+    class="text-xs text-slate-300"
+></p>
+
+<div class="bg-slate-800 p-3 rounded-xl grid grid-cols-2">
+
+<div>
+
+<p class="text-slate-400 text-xs">
+Score final
+</p>
+
+<p
+    id="final-score"
+    class="text-lg font-black text-emerald-400"
+>
+0 pts
+</p>
+
+</div>
+
+<div>
+
+<p class="text-slate-400 text-xs">
+Temps total
+</p>
+
+<p
+    id="final-time"
+    class="text-lg font-black text-indigo-400"
+>
+0.0s
+</p>
+
+</div>
+
+</div>
+
+<div class="grid grid-cols-2 gap-2">
+    <button
+        onclick="startGamePlay()"
+        class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-xl text-xs sm:text-sm"
+    >
+        Rejouer 🔄
+    </button>
+    <button
+        onclick="returnToHome()"
+        class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-xs sm:text-sm"
+    >
+        Accueil 🏠
+    </button>
+</div>
+
+<button
+    onclick="showScreen('screen-setup')"
+    class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-xs"
+>
+Changer de profil ⚙️
+</button>
+
+</div>
+
+
+<!-- SETTINGS -->
+
+<div
+    id="settings-modal"
+    class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+>
+
+<div class="bg-slate-900 border border-slate-700 p-5 rounded-2xl max-w-sm w-full space-y-3">
+
+<h3 class="font-bold text-amber-400">
+⚙️ Paramètres administrateur
+</h3>
+
+<input
+    type="password"
+    id="admin-password-input"
+    placeholder="Code secret"
+    class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white"
+/>
+
+<button
+    onclick="verifyAndReset()"
+    class="w-full bg-red-600 text-white font-bold py-2 rounded"
+>
+🗑️ Réinitialiser
+</button>
+
+<button
+    onclick="closeSettings()"
+    class="w-full bg-slate-700 py-2 rounded"
+>
+Fermer
+</button>
+
+</div>
+
+</div>
+
+
+<!-- MODAL -->
+
+<div
+    id="custom-modal"
+    class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 z-[110]"
+>
+
+<div
+    class="bg-slate-900 border border-slate-700 p-5 rounded-2xl max-w-md w-full text-center"
+>
+
+<div
+    id="modal-icon"
+    class="text-4xl mb-2"
+>
+📐
+</div>
+
+<h3
+    id="modal-title"
+    class="text-lg font-bold text-amber-400 mb-3"
+>
+Information
+</h3>
+
+<p
+    id="modal-text"
+    class="text-sm text-slate-300 leading-7 whitespace-pre-line"
+></p>
+
+<button
+    onclick="closeModal()"
+    class="w-full bg-amber-500 text-slate-950 font-bold py-2 rounded-xl mt-5"
+>
+Compris
+</button>
+
+</div>
+
+</div>
+
+</main>
+</div>
+
+
+<script>
+
+/* =========================================================
+   GAME STATE
+========================================================= */
+
+let gameState = {
+    name: "",
+    studentClass: "5A",
+    level: "facile",
+    lives: 5,
+    maxLives: 5,
+    score: 0,
+    round: 1,
+    maxRounds: 30,
+    startTime: 0,
+    elapsedTime: 0,
+    totalTimerInterval: null,
+    turnTimerInterval: null,
+    turnTimeLeft: 30,
+    startTurnTime: 30,
+    minTurnTime: 15,
+    currentNumber: 0,
+    currentCorrectAnswer: 0,
+    currentQuestionText: "",
+    explanation: "",
+    decimals: 1,
+    isProcessing: false
+};
+
+let unsubscribeSetup = null;
+let unsubscribeStory = null;
+
+// =========================================================
+// مولد الأصوات التفاعلية (Web Audio API)
+// =========================================================
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    const now = audioCtx.currentTime;
+
+    if (type === 'click') {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+        g.gain.setValueAtTime(0.15, now);
+        g.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now); osc.stop(now + 0.08);
+    } 
+    else if (type === 'correct') {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.1);
+        osc.frequency.setValueAtTime(783.99, now + 0.2);
+        g.gain.setValueAtTime(0.2, now);
+        g.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.start(now); osc.stop(now + 0.4);
+    } 
+    else if (type === 'scream_fall') {
+        // صوت صراخ الملك وهويطس لتحت
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(650, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.6);
+        g.gain.setValueAtTime(0.25, now);
+        g.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.start(now); osc.stop(now + 0.6);
+    } 
+    else if (type === 'rock_crash') {
+        // صوت اصطدام صخرة ثقيلة أو انهيار
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.linearRampToValueAtTime(30, now + 0.4);
+        g.gain.setValueAtTime(0.3, now);
+        g.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.start(now); osc.stop(now + 0.4);
+    }
+    else if (type === 'victory') {
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.connect(g); g.connect(audioCtx.destination);
+            o.type = 'sine';
+            o.frequency.setValueAtTime(freq, now + idx * 0.12);
+            g.gain.setValueAtTime(0.2, now + idx * 0.12);
+            g.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.12 + 0.25);
+            o.start(now + idx * 0.12);
+            o.stop(now + idx * 0.12 + 0.25);
+        });
+    }
+}
+
+
+/* =========================================================
+   SCREEN
+========================================================= */
+
+function showScreen(id) {
+    [
+        "screen-setup",
+        "screen-story",
+        "screen-game",
+        "screen-result"
+    ].forEach(screenId => {
+        document.getElementById(screenId).classList.add("hidden");
+    });
+
+    document.getElementById(id).classList.remove("hidden");
+
+    if(id === "screen-setup") {
+        initRealtimeLeaderboard();
+    }
+}
+
+function returnToHome() {
+    showScreen("screen-setup");
+}
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+let modalCallback = null;
+
+function showModal(title, text, icon = "📐", callback = null) {
+    document.getElementById("modal-title").innerText = title;
+    document.getElementById("modal-text").innerText = text;
+    document.getElementById("modal-icon").innerText = icon;
+    document.getElementById("custom-modal").classList.remove("hidden");
+    modalCallback = callback;
+}
+
+function closeModal() {
+    document.getElementById("custom-modal").classList.add("hidden");
+    if (modalCallback) {
+        const callback = modalCallback;
+        modalCallback = null;
+        callback();
+    }
+}
+
+
+/* =========================================================
+   SETTINGS & CLOUD RESET
+========================================================= */
+
+function openSettings() {
+    document.getElementById("admin-password-input").value = "";
+    document.getElementById("settings-modal").classList.remove("hidden");
+}
+
+fn = closeSettings; // helper
+function closeSettings() {
+    document.getElementById("settings-modal").classList.add("hidden");
+}
+
+async function verifyAndReset() {
+    const password = document.getElementById("admin-password-input").value.trim();
+    if (password === "0891") {
+        if (!window.db) {
+            showModal("Erreur", "Connexion cloud non disponible.", "❌");
+            return;
+        }
+
+        try {
+            // حذف جميع السكورات من المجموعات الثلاثة على السحابة
+            const levels = ["facile", "intermediat", "difficile"];
+            for (const lvl of levels) {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "scores_" + lvl));
+                const deletePromises = [];
+                querySnapshot.forEach((documentSnapshot) => {
+                    deletePromises.push(window.deleteDoc(window.doc(window.db, "scores_" + lvl, documentSnapshot.id)));
+                });
+                await Promise.all(deletePromises);
+            }
+
+            closeSettings();
+            showModal("Succès", "Tous les scores ont été effacés du cloud avec succès !", "🗑️");
+        } catch (error) {
+            console.error("Error clearing cloud scores: ", error);
+            showModal("Erreur", "Échec de la suppression des scores.", "❌");
+        }
+    } else {
+        showModal("Erreur", "Code secret incorrect.", "❌");
+    }
+}
+
+
+/* =========================================================
+   START
+========================================================= */
+
+function goToStory() {
+    const name = document.getElementById("input-name").value.trim();
+    if (!name) {
+        showModal("Nom requis", "Veuillez entrer votre nom avant de commencer.", "⚠️");
+        return;
+    }
+
+    gameState.name = name;
+    gameState.studentClass = document.getElementById("select-class").value;
+    gameState.level = document.getElementById("select-level").value;
+
+    if (gameState.level === "facile") {
+        gameState.maxLives = 5;
+        gameState.startTurnTime = 30;
+        gameState.minTurnTime = 15;
+    } else if (gameState.level === "intermediat") {
+        gameState.maxLives = 4;
+        gameState.startTurnTime = 22;
+        gameState.minTurnTime = 10;
+    } else {
+        gameState.maxLives = 3;
+        gameState.startTurnTime = 15;
+        gameState.minTurnTime = 7;
+    }
+
+    gameState.lives = gameState.maxLives;
+
+    document.getElementById("display-name").innerText = gameState.name;
+    document.getElementById("display-class").innerText = gameState.studentClass;
+
+    document.getElementById("header-user-info").classList.remove("hidden");
+    document.getElementById("header-user-info").classList.add("flex");
+
+    document.getElementById("lb-level-badge").innerText = gameState.level.toUpperCase();
+
+    showScreen("screen-story");
+    initStoryLeaderboard();
+}
+
+
+/* =========================================================
+   START GAME
+========================================================= */
+
+function startGamePlay() {
+    gameState.round = 1;
+    gameState.score = 0;
+    gameState.lives = gameState.maxLives;
+    gameState.startTime = Date.now();
+    gameState.elapsedTime = 0;
+    gameState.isProcessing = false;
+
+    clearInterval(gameState.totalTimerInterval);
+
+    gameState.totalTimerInterval = setInterval(() => {
+        gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
+    }, 100);
+
+    showScreen("screen-game");
+    loadNextRound();
+}
+
+
+/* =========================================================
+   LIVES
+========================================================= */
+
+function updateLivesDisplay() {
+    const container = document.getElementById("lives-container");
+    container.innerHTML = "";
+    for (let i = 0; i < gameState.maxLives; i++) {
+        const heart = document.createElement("span");
+        heart.innerText = i < gameState.lives ? "❤️" : "🖤";
+        container.appendChild(heart);
+    }
+}
+
+
+/* =========================================================
+   NUMBER OF ROCKS
+========================================================= */
+
+function getRockCount() {
+    const eachSide = Math.min(5, 1 + Math.floor((gameState.round - 1) / 5));
+    return eachSide * 2;
+}
+
+
+/* =========================================================
+   CREATE QUESTION
+========================================================= */
+
+function createQuestion() {
+    const integerPart = Math.floor(Math.random() * 900) + 10;
+    const decimalPart = Math.floor(Math.random() * 90000) + 1000;
+
+    gameState.currentNumber = Number(`${integerPart}.${decimalPart}`);
+
+    let types;
+    if (gameState.level === "facile") {
+        types = [
+            { p: 0, l: "unité", t: "Arrondir à une unité près" },
+            { p: 1, l: "dixième", t: "Arrondir à un dixième près" },
+            { p: 2, l: "centième", t: "Arrondir à un centième près" }
+        ];
+    } else {
+        types = [
+            { p: 0, l: "unité", t: "Arrondir à une unité près" },
+            { p: 1, l: "dixième", t: "Arrondir à un dixième près" },
+            { p: 2, l: "centième", t: "Arrondir à un centième près" },
+            { p: 3, l: "millième", t: "Arrondir à un millième près" }
+        ];
+    }
+
+    const selectedObj = types[Math.floor(Math.random() * types.length)];
+    gameState.decimals = selectedObj.p;
+    gameState.currentQuestionText = selectedObj.t;
+
+    if (gameState.decimals === 0) {
+        gameState.currentCorrectAnswer = Math.round(gameState.currentNumber);
+    } else {
+        gameState.currentCorrectAnswer = Number(gameState.currentNumber.toFixed(gameState.decimals));
+    }
+
+    gameState.explanation = createMathExplanation(selectedObj.l);
+
+    document.getElementById("target-number").innerText = gameState.currentNumber.toFixed(4);
+    document.getElementById("rounding-question").innerText = gameState.currentQuestionText;
+}
+
+
+/* =========================================================
+   EXPLANATION
+========================================================= */
+
+function createMathExplanation(type) {
+    let nextDigit;
+    if (type === "unité") {
+        nextDigit = Math.floor((gameState.currentNumber - Math.floor(gameState.currentNumber)) * 10);
+        return `Le nombre ${gameState.currentNumber.toFixed(4)} doit être arrondi à l'unité.\n\nOn regarde le premier chiffre après la virgule : ${nextDigit}.\n\n` +
+            (nextDigit >= 5 ? `Comme ${nextDigit} est supérieur ou égal à 5, on augmente l'unité de 1.` : `Comme ${nextDigit} est inférieur à 5, on garde l'unité.`) +
+            `\n\nRéponse correcte : ${gameState.currentCorrectAnswer}`;
+    }
+
+    const factor = Math.pow(10, gameState.decimals);
+    const shifted = Math.floor(gameState.currentNumber * factor * 10) % 10;
+
+    return `Le nombre ${gameState.currentNumber.toFixed(4)} doit être arrondi à ${type}.\n\nOn regarde le chiffre juste après le rang demandé : ${shifted}.\n\n` +
+        (shifted >= 5 ? `Comme ${shifted} est supérieur ou égal à 5, on augmente le dernier chiffre conservé de 1.` : `Comme ${shifted} est inférieur à 5, on conserve le dernier chiffre.`) +
+        `\n\nRéponse correcte : ${gameState.currentCorrectAnswer}`;
+}
+
+
+/* =========================================================
+   ANSWERS
+========================================================= */
+
+function createAnswers() {
+    const count = getRockCount();
+    const answersSet = new Set();
+    
+    const correctVal = Number(gameState.currentCorrectAnswer.toFixed(gameState.decimals));
+    answersSet.add(correctVal);
+
+    let step;
+    if (gameState.decimals === 0) step = 1;
+    else if (gameState.decimals === 1) step = 0.1;
+    else if (gameState.decimals === 2) step = 0.01;
+    else step = 0.001;
+
+    const neighborVal1 = Number((correctVal + step).toFixed(gameState.decimals));
+    const neighborVal2 = Number((correctVal - step).toFixed(gameState.decimals));
+    
+    if (neighborVal1 >= 0) answersSet.add(neighborVal1);
+    if (neighborVal2 >= 0) answersSet.add(neighborVal2);
+
+    let extraMultiplier = 2;
+    while (answersSet.size < count && extraMultiplier <= 4) {
+        const val1 = Number((correctVal + extraMultiplier * step).toFixed(gameState.decimals));
+        const val2 = Number((correctVal - extraMultiplier * step).toFixed(gameState.decimals));
+        if (val1 >= 0) answersSet.add(val1);
+        if (answersSet.size < count && val2 >= 0) answersSet.add(val2);
+        extraMultiplier++;
+    }
+
+    const answersArray = Array.from(answersSet);
+    if (!answersArray.includes(correctVal)) {
+        answersArray[0] = correctVal;
+    }
+
+    return answersArray.sort(() => Math.random() - .5);
+}
+
+
+/* =========================================================
+   DRAW ROCKS
+========================================================= */
+
+function generateRocks() {
+    const left = document.getElementById("rocks-left-container");
+    const right = document.getElementById("rocks-right-container");
+
+    left.innerHTML = "";
+    right.innerHTML = "";
+
+    const answers = createAnswers();
+    const half = Math.ceil(answers.length / 2);
+    const leftAnswers = answers.slice(0, half);
+    const rightAnswers = answers.slice(half);
+
+    leftAnswers.forEach((answer) => {
+        const rock = document.createElement("button");
+        rock.className = "rock";
+        rock.innerHTML = `🪨 <span class="bg-stone-950/70 px-2 py-0.5 rounded text-amber-300">${answer}</span>`;
+        rock.onclick = () => {
+            playSound('click');
+            handleAnswer(answer, false, rock);
+        };
+        left.appendChild(rock);
+    });
+
+    rightAnswers.forEach((answer) => {
+        const rock = document.createElement("button");
+        rock.className = "rock";
+        rock.innerHTML = `🪨 <span class="bg-stone-950/70 px-2 py-0.5 rounded text-amber-300">${answer}</span>`;
+        rock.onclick = () => {
+            playSound('click');
+            handleAnswer(answer, false, rock);
+        };
+        right.appendChild(rock);
+    });
+}
+
+
+/* =========================================================
+   RESET KING
+========================================================= */
+
+function resetKing() {
+    const oldKing = document.getElementById("king");
+    const topRock = document.getElementById("top-rock");
+    const birdContainer = document.getElementById("bird-container");
+    const arena = document.getElementById("arena");
+
+    const newKing = document.createElement("div");
+    newKing.id = "king";
+    newKing.className = "king";
+    newKing.innerHTML = `
+        <div class="crown">👑</div>
+        <div class="face">
+            <span class="eye eye-left"></span>
+            <span class="eye eye-right"></span>
+            <span class="mouth"></span>
+        </div>
+        <div class="body-king">
+            <div class="belt">
+                <div class="belt-jewel"></div>
+            </div>
+        </div>
+        <div class="arm arm-left"></div>
+        <div class="arm arm-right"></div>
+        <div class="leg leg-left"></div>
+        <div class="leg leg-right"></div>
+    `;
+    
+    oldKing.parentNode.replaceChild(newKing, oldKing);
+
+    topRock.style.display = "flex";
+    topRock.classList.remove("initial-rock-fall");
+    birdContainer.innerHTML = "";
+
+    const fallDistance = Math.max(260, arena.scrollHeight - 170);
+    document.getElementById("magic-whip").style.display = "none";
+
+    setTimeout(() => {
+        const bird = document.createElement("div");
+        bird.className = "bird-anim";
+        bird.innerHTML = "🦅";
+        birdContainer.appendChild(bird);
+
+        setTimeout(() => {
+            topRock.classList.add("initial-rock-fall");
+            const activeKing = document.getElementById("king");
+            activeKing.classList.add("king-falling");
+            activeKing.style.setProperty("--fall-distance", fallDistance + "px");
+            
+            // زيادة سرعة السقوط تدريجياً بمرور الأدوار
+            let currentDuration = Math.max(4, gameState.turnTimeLeft - (gameState.round * 0.15));
+            activeKing.style.animationDuration = currentDuration + "s";
+        }, 250);
+    }, 200);
+}
+
+
+/* =========================================================
+   NEW ROUND
+========================================================= */
+
+function loadNextRound() {
+    if (gameState.round > gameState.maxRounds) {
+        endGame(true);
+        return;
+    }
+
+    gameState.isProcessing = false;
+
+    document.getElementById("current-round").innerText = gameState.round;
+    document.getElementById("current-score").innerText = gameState.score;
+
+    updateLivesDisplay();
+
+    gameState.turnTimeLeft = Math.max(
+        gameState.minTurnTime,
+        gameState.startTurnTime - ((gameState.round - 1) * 0.5)
+    );
+
+    document.getElementById("turn-timer").innerText = gameState.turnTimeLeft.toFixed(1);
+
+    createQuestion();
+    generateRocks();
+    resetKing();
+
+    clearInterval(gameState.turnTimerInterval);
+
+    gameState.turnTimerInterval = setInterval(() => {
+        gameState.turnTimeLeft -= 0.1;
+        document.getElementById("turn-timer").innerText = Math.max(0, gameState.turnTimeLeft).toFixed(1);
+
+        if (gameState.turnTimeLeft <= 0) {
+            clearInterval(gameState.turnTimerInterval);
+            handleAnswer(null, true, null);
+        }
+    }, 100);
+}
+
+
+/* =========================================================
+   MAGIC WHIP
+========================================================= */
+
+function shootWhip(rock) {
+    const arena = document.getElementById("arena").getBoundingClientRect();
+    const king = document.getElementById("king").getBoundingClientRect();
+    const rockRect = rock.getBoundingClientRect();
+    const whip = document.getElementById("magic-whip");
+
+    const startX = king.left + king.width / 2 - arena.left;
+    const startY = king.top + king.height * .55 - arena.top;
+    const endX = rockRect.left + rockRect.width / 2 - arena.left;
+    const endY = rockRect.top + rockRect.height / 2 - arena.top;
+
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+    whip.style.left = startX + "px";
+    whip.style.top = startY + "px";
+    whip.style.width = "0px";
+    whip.style.transform = `rotate(${angle}deg)`;
+    whip.style.display = "block";
+
+    requestAnimationFrame(() => {
+        whip.style.transition = "width .4s ease-out";
+        whip.style.width = distance + "px";
+    });
+
+    setTimeout(() => {
+        whip.style.transition = "width .25s ease-in";
+        whip.style.width = "0px";
+    }, 650);
+}
+
+
+/* =========================================================
+   PULL KING TO ROCK
+========================================================= */
+
+function pullKingToRock(rock, callback) {
+    const arena = document.getElementById("arena").getBoundingClientRect();
+    const king = document.getElementById("king");
+    const kingRect = king.getBoundingClientRect();
+    const rockRect = rock.getBoundingClientRect();
+
+    const targetX = rockRect.left + rockRect.width / 2 - arena.left;
+    const targetY = rockRect.top - arena.top - kingRect.height * .72;
+
+    king.classList.remove("king-falling");
+    king.style.animation = "none";
+    king.style.transition = "left .85s cubic-bezier(.2,.8,.2,1), top .85s cubic-bezier(.2,.8,.2,1)";
+    king.style.left = targetX + "px";
+    king.style.top = targetY + "px";
+    king.style.transform = "translateX(-50%)";
+
+    setTimeout(callback, 900);
+}
+
+
+/* =========================================================
+   ANSWER
+========================================================= */
+
+function handleAnswer(selectedValue, timeout, rock) {
+    if (gameState.isProcessing) return;
+    gameState.isProcessing = true;
+
+    clearInterval(gameState.turnTimerInterval);
+
+    if (timeout) {
+        playSound('scream_fall');
+        gameState.lives--;
+        updateLivesDisplay();
+
+        const king = document.getElementById("king");
+        king.classList.add("king-falling");
+        king.style.setProperty("--fall-distance", (document.getElementById("arena").scrollHeight + 100) + "px");
+
+        showModal(
+            "Temps écoulé ⏰",
+            `Le roi n'a pas trouvé le rocher à temps.\n\nRéponse correcte :\n${gameState.currentCorrectAnswer}\n\n${gameState.explanation}`,
+            "⏰",
+            () => { afterFailure(); }
+        );
+        return;
+    }
+
+    shootWhip(rock);
+
+    pullKingToRock(rock, () => {
+        if (Number(selectedValue) === Number(gameState.currentCorrectAnswer)) {
+            playSound('correct');
+            rock.classList.add("correct");
+            gameState.score += 10;
+            document.getElementById("current-score").innerText = gameState.score;
+            document.getElementById("rounding-question").innerText = "✅ Bonne réponse ! Le roi est sauvé ! +10 points";
+
+            setTimeout(() => {
+                gameState.round++;
+                loadNextRound();
+            }, 1100);
+        } else {
+            playSound('scream_fall');
+            setTimeout(() => playSound('rock_crash'), 300);
+
+            rock.classList.add("rock-falling");
+            gameState.lives--;
+            updateLivesDisplay();
+            document.getElementById("rounding-question").innerText = "❌ Mauvaise réponse ! Le rocher s'effondre !";
+
+            const king = document.getElementById("king");
+            king.style.transition = "top 1.25s ease-in";
+            king.style.top = (document.getElementById("arena").scrollHeight + 100) + "px";
+
+            setTimeout(() => {
+                showModal(
+                    "Erreur mathématique 💥",
+                    `Le roi est arrivé sur le rocher, mais la réponse était fausse et le rocher s'est effondré avec lui.\n\nRéponse choisie :\n${selectedValue}\n\nRéponse correcte :\n${gameState.currentCorrectAnswer}\n\nExplication :\n${gameState.explanation}`,
+                    "📐",
+                    () => { afterFailure(); }
+                );
+            }, 1300);
+        }
+    });
+}
+
+
+/* =========================================================
+   AFTER FAILURE
+========================================================= */
+
+function afterFailure() {
+    if (gameState.lives <= 0) {
+        endGame(false);
+    } else {
+        gameState.round++;
+        loadNextRound();
+    }
+}
+
+
+/* =========================================================
+   END GAME
+========================================================= */
+
+function endGame(isWin) {
+    clearInterval(gameState.totalTimerInterval);
+    clearInterval(gameState.turnTimerInterval);
+
+    showScreen("screen-result");
+
+    document.getElementById("final-score").innerText = gameState.score + " pts";
+    document.getElementById("final-time").innerText = gameState.elapsedTime.toFixed(1) + "s";
+
+    if (isWin) {
+        playSound('victory');
+        document.getElementById("result-icon").innerText = "👑🏆";
+        document.getElementById("result-title").innerText = "Roi de l'arrondissement !";
+        document.getElementById("result-message").innerText = `Bravo ${gameState.name} (${gameState.studentClass}) ! Tu as triomphé.`;
+    } else {
+        playSound('scream_fall');
+        document.getElementById("result-icon").innerText = "💀";
+        document.getElementById("result-title").innerText = "Game Over";
+        document.getElementById("result-message").innerText = `Le roi est tombé... Score : ${gameState.score} points.`;
+    }
+
+    saveScoreToFirebase();
+}
+
+
+/* =========================================================
+   FIREBASE REAL-TIME CLOUD LEADERBOARD SYNC
+========================================================= */
+
+async function saveScoreToFirebase() {
+    if (!window.db) return;
+
+    const data = {
+        name: gameState.name,
+        studentClass: gameState.studentClass,
+        level: gameState.level,
+        score: gameState.score,
+        time: Number(gameState.elapsedTime.toFixed(1)),
+        timestamp: window.serverTimestamp()
+    };
+
+    try {
+        await window.addDoc(window.collection(window.db, "scores_" + gameState.level), data);
+    } catch (error) {
+        console.error("Error writing document to Firebase: ", error);
+    }
+}
+
+function renderRealtimeLeaderboard(containerId, level) {
+    const list = document.getElementById(containerId);
+    if (!list) return;
+
+    list.innerHTML = `<p class="text-xs text-slate-400 text-center py-3">Connexion au cloud...</p>`;
+
+    if (!window.db) {
+        setTimeout(() => renderRealtimeLeaderboard(containerId, level), 500);
+        return;
+    }
+
+    const q = window.query(
+        window.collection(window.db, "scores_" + level),
+        window.orderBy("score", "desc"),
+        window.orderBy("time", "asc"),
+        window.limit(10)
+    );
+
+    const unsubscribe = window.onSnapshot(q, (querySnapshot) => {
+        const scores = [];
+        querySnapshot.forEach((doc) => {
+            scores.push(doc.data());
+        });
+
+        list.innerHTML = "";
+
+        if (!scores.length) {
+            list.innerHTML = `<p class="text-xs text-slate-400 text-center py-3">Aucun score dans le cloud pour ce niveau.</p>`;
+            return;
+        }
+
+        scores.forEach((entry, index) => {
+            const row = document.createElement("div");
+            row.className = "flex justify-between items-center py-2 px-1 text-xs";
+
+            const isFirst = index === 0;
+            const rankDisplay = isFirst ? "👑 1." : `${index + 1}.`;
+
+            row.innerHTML = `
+                <div>
+                    <span class="font-bold text-amber-300 mr-1">${rankDisplay}</span>
+                    <b>${entry.name}</b>
+                    <span class="text-slate-400">(${entry.studentClass})</span>
+                    ${isFirst ? '<span class="ml-1 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">Roi 👑</span>' : ''}
+                </div>
+                <div class="text-emerald-400 font-bold">
+                    ${entry.score} pts <span class="text-[10px] text-slate-400">(${entry.time}s)</span>
+                </div>
+            `;
+            list.appendChild(row);
+        });
+    }, (error) => {
+        console.error("Firestore snapshot error: ", error);
+        list.innerHTML = `<p class="text-xs text-red-400 text-center py-3">Erreur de synchronisation cloud.</p>`;
+    });
+
+    return unsubscribe;
+}
+
+function initRealtimeLeaderboard() {
+    if (unsubscribeSetup) unsubscribeSetup();
+    const selectedLevel = document.getElementById("select-level").value;
+    document.getElementById("setup-level-badge").innerText = selectedLevel;
+    unsubscribeSetup = renderRealtimeLeaderboard("setup-leaderboard-list", selectedLevel);
+}
+
+function initStoryLeaderboard() {
+    if (unsubscribeStory) unsubscribeStory();
+    document.getElementById("lb-level-badge").innerText = gameState.level.toUpperCase();
+    unsubscribeStory = renderRealtimeLeaderboard("leaderboard-list", gameState.level);
+}
+
+window.addEventListener('firebase-ready', () => {
+    initRealtimeLeaderboard();
+});
+
+</script>
+
+</body>
+</html>
